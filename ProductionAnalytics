@@ -1,0 +1,106 @@
+-- =====================================================
+-- Project: ProductionAnalytics
+-- Purpose: Manufacturing, production batches, inventory tracking
+-- =====================================================
+
+-- 1. Drugs table (manufactured products)
+CREATE TABLE Drugs (
+    DrugID INT PRIMARY KEY,
+    DrugName VARCHAR(100)
+);
+
+INSERT INTO Drugs (DrugID, DrugName) VALUES
+(1, 'Paracetamol 500mg'),
+(2, 'Amoxicillin 250mg'),
+(3, 'Ibuprofen 400mg');
+
+-- 2. Production Batches table
+CREATE TABLE ProductionBatches (
+    BatchID INT PRIMARY KEY,
+    DrugID INT,
+    QuantityProduced INT,
+    ProductionDate DATE,
+    ExpiryDate DATE,
+    FOREIGN KEY (DrugID) REFERENCES Drugs(DrugID)
+);
+
+INSERT INTO ProductionBatches (BatchID, DrugID, QuantityProduced, ProductionDate, ExpiryDate) VALUES
+(1, 1, 1000, '2024-01-05', '2026-01-05'),
+(2, 2, 2000, '2024-02-15', '2026-02-15'),
+(3, 3, 1500, '2024-03-10', '2026-03-10');
+
+-- 3. Distribution table (to hospitals/pharmacies)
+CREATE TABLE Distribution (
+    DistributionID INT PRIMARY KEY,
+    BatchID INT,
+    CustomerID INT,
+    QuantityDistributed INT,
+    DistributionDate DATE,
+    FOREIGN KEY (BatchID) REFERENCES ProductionBatches(BatchID)
+);
+
+-- 4. Customers table (anonymized hospitals/pharmacies)
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY,
+    CustomerName VARCHAR(100),
+    City VARCHAR(50),
+    CustomerType VARCHAR(50)
+);
+
+INSERT INTO Customers (CustomerID, CustomerName, City, CustomerType) VALUES
+(1, 'Customer 1', 'Nairobi', 'Hospital'),
+(2, 'Customer 2', 'Mombasa', 'Pharmacy'),
+(3, 'Customer 3', 'Kisumu', 'Hospital'),
+(4, 'Customer 4', 'Nakuru', 'Pharmacy'),
+(5, 'Customer 5', 'Eldoret', 'Hospital');
+
+INSERT INTO Distribution (DistributionID, BatchID, CustomerID, QuantityDistributed, DistributionDate) VALUES
+(1, 1, 1, 200, '2024-03-01'),
+(2, 1, 2, 150, '2024-03-05'),
+(3, 2, 3, 300, '2024-03-10'),
+(4, 2, 4, 200, '2024-03-12'),
+(5, 3, 5, 100, '2024-03-15');
+
+-- =====================================================
+-- Production Analytics Queries
+-- =====================================================
+
+-- 1. Total quantity produced per drug
+SELECT 
+    d.DrugName,
+    SUM(pb.QuantityProduced) AS TotalProduced
+FROM Drugs d
+JOIN ProductionBatches pb ON d.DrugID = pb.DrugID
+GROUP BY d.DrugName
+ORDER BY TotalProduced DESC;
+
+-- 2. Total quantity distributed per drug
+SELECT 
+    d.DrugName,
+    SUM(dist.QuantityDistributed) AS TotalDistributed
+FROM Drugs d
+JOIN ProductionBatches pb ON d.DrugID = pb.DrugID
+JOIN Distribution dist ON pb.BatchID = dist.BatchID
+GROUP BY d.DrugName
+ORDER BY TotalDistributed DESC;
+
+-- 3. Remaining inventory per batch
+SELECT 
+    pb.BatchID,
+    d.DrugName,
+    pb.QuantityProduced - COALESCE(SUM(dist.QuantityDistributed),0) AS RemainingQuantity
+FROM ProductionBatches pb
+JOIN Drugs d ON pb.DrugID = d.DrugID
+LEFT JOIN Distribution dist ON pb.BatchID = dist.BatchID
+GROUP BY pb.BatchID, d.DrugName, pb.QuantityProduced
+ORDER BY RemainingQuantity DESC;
+
+-- 4. Distribution per customer
+SELECT 
+    cust.CustomerName,
+    cust.City,
+    SUM(dist.QuantityDistributed) AS TotalReceived
+FROM Customers cust
+JOIN Distribution dist ON cust.CustomerID = dist.CustomerID
+GROUP BY cust.CustomerName, cust.City
+ORDER BY TotalReceived DESC;
