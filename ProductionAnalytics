@@ -1,7 +1,5 @@
--- =====================================================
 -- Project: ProductionAnalytics
 -- Purpose: Manufacturing, production batches, inventory tracking
--- =====================================================
 
 -- 1. Drugs table (manufactured products)
 CREATE TABLE Drugs (
@@ -39,7 +37,7 @@ CREATE TABLE Distribution (
     FOREIGN KEY (BatchID) REFERENCES ProductionBatches(BatchID)
 );
 
--- 4. Customers table (anonymized hospitals/pharmacies)
+-- 4. Customers table 
 CREATE TABLE Customers (
     CustomerID INT PRIMARY KEY,
     CustomerName VARCHAR(100),
